@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA All-in-One Text Formatter & Sanitizer</title>
+    <style>
+        /* Theme Variables */
+        :root {
+            --bg-main: #121212;
+            --bg-panel: #1e1e1e;
+            --bg-input: #2d2d2d;
+            --border-color: #3d3d3d;
+            --text-main: #eeeeee;
+            --text-accent: #a6e22e; 
+            --btn-primary: #3b82f6;
+            --btn-primary-hover: #2563eb;
+            --btn-success: #10b981;
+        }
+
+        [data-theme="light"] {
+            --bg-main: #f3f4f6;
+            --bg-panel: #ffffff;
+            --bg-input: #f9fafb;
+            --border-color: #e5e7eb;
+            --text-main: #1f2937;
+            --text-accent: #059669; 
+            --btn-primary: #3b82f6;
+            --btn-primary-hover: #1d4ed8;
+            --btn-success: #10b981;
+        }
+
+        [data-theme="cyberpunk"] {
+            --bg-main: #000411;
+            --bg-panel: #0b0f19;
+            --bg-input: #1b1724;
+            --border-color: #ff007f;
+            --text-main: #00ffff;
+            --text-accent: #fffb00; 
+            --btn-primary: #ff007f;
+            --btn-primary-hover: #d00068;
+            --btn-success: #00ff66;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            padding: 20px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        header {
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 { font-size: 1.5rem; }
+        header p { font-size: 0.85rem; color: #888; margin-top: 4px; }
+
+        .theme-selector select, .control-group select {
+            width: 100%;
+            background: var(--bg-input);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .theme-selector select { width: auto; }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 1fr 260px 1fr;
+            gap: 20px;
+            flex-grow: 1;
+            min-height: 0;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            gap: 10px;
+        }
+
+        .panel-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #888;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .metrics { font-size: 0.8rem; color: #666; text-transform: none; }
+
+        textarea, input[type="text"] {
+            width: 100%;
+            background-color: var(--bg-input);
+            color: var(--text-accent);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        textarea { flex-grow: 1; resize: none; line-height: 1.4; }
+        textarea[readonly] { opacity: 0.8; cursor: not-allowed; }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .control-group {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .control-group h3 {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 3px;
+        }
+
+        button {
+            width: 100%;
+            background-color: var(--bg-input);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 6px;
+            text-align: left;
+        }
+
+        button:hover { filter: brightness(1.2); }
+        .btn-success { background-color: var(--btn-success); border: none; text-align: center; font-weight: bold; color: #fff;}
+        .regex-matched { background-color: rgba(16, 185, 129, 0.2); border-color: var(--btn-success) !important; }
+        .regex-error { background-color: rgba(239, 68, 68, 0.2); border-color: #ef4444 !important; }
+
+        .sub-tool {
+            border-top: 1px solid var(--border-color);
+            padding-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--btn-success);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        
+        .info-box {
+            font-size: 0.75rem;
+            color: #aaa;
+            margin-top: 6px;
+            line-height: 1.3;
+            background: rgba(0,0,0,0.2);
+            padding: 6px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>QA All-in-One Data Sanitizer & Formatter</h1>
+            <p>100% Client-Side. Your testing logs and payloads remain secure inside your browser.</p>
+        </div>
+        <div class="theme-selector">
+            <select id="themeSelect" onchange="changeTheme()">
+                <option value="dark">🌑 Dark Mode</option>
+                <option value="light">☀️ Light Mode</option>
+                <option value="cyberpunk">👾 Cyberpunk Neon</option>
+            </select>
+        </div>
+    </header>
+    
+    <div class="app-container">
+        <!-- Left Panel -->
+        <div class="panel">
+            <div class="panel-title">
+                <span>Raw Input / Generator Source</span>
+                <span class="metrics" id="inputMetrics">Chars: 0 | Lines: 1</span>
+            </div>
+            <textarea id="inputText" placeholder="Paste dirty JSON, server logs, or BDD Gherkin scenarios here..." oninput="updateMetrics(); testRegex();"></textarea>
+            
+         
+        </div>
+        
+        <!-- Center Sidebar Controls -->
+        <div class="controls">
+            <button class="btn-success" onclick="copyOutput()">📋 Copy Output</button>
+            
+            <!-- BDD Tool -->
+            <div class="control-group">
+                <h3>Automation Helpers</h3>
+                <button style="background-color: var(--btn-primary); border: none; font-weight: bold;" onclick="generateBDDSteps()">⚙️ Generate BDD Steps</button>
+            </div>
+
+            <!-- NEW FEATURE: Mock Data Generator -->
+            <div class="control-group">
+                <h3>Mock Data Generator</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                    <button onclick="generateFakeData('name')" style="margin:0; font-size:0.75rem;">👤 Name</button>
+                    <button onclick="generateFakeData('email')" style="margin:0; font-size:0.75rem;">📧 Email</button>
+                    <button onclick="generateFakeData('uuid')" style="margin:0; font-size:0.75rem;">🆔 UUID v4</button>
+                    <button onclick="generateFakeData('phone')" style="margin:0; font-size:0.75rem;">📞 Phone</button>
+                </div>
+            </div>
+
+           
+
+            <div class="control-group">
+                <h3>JSON Processing</h3>
+                <button onclick="processData('beautifyJSON')">✨ Beautify JSON</button>
+                <button onclick="processData('minifyJSON')">🗜️ Minify JSON</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>String Mutations</h3>
+                <button onclick="processData('trimSpaces')">🧼 Trim & Clean Spaces</button>
+                <button onclick="processData('toCamelCase')">🐪 toCamelCase</button>
+                <button onclick="processData('toSnakeCase')">🐍 to_snake_case</button>
+                <button onclick="processData('toKebabCase')">🍢 to-kebab-case</button>
+            </div>
+
+            <div class="control-group">
+                <h3>Web Utilities</h3>
+                <button onclick="processData('urlEncode')">🔗 URL Encode</button>
+                <button onclick="processData('urlDecode')">🔓 URL Decode</button>
+                <button onclick="processData('base64Encode')">📦 Base64 Encode</button>
+                <button onclick="processData('base64Decode')">🔓 Base64 Decode</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>Sanitizers / Escapes</h3>
+                <button onclick="processData('escapeHTML')">🛡️ Escape HTML (Anti-XSS)</button>
+                <button onclick="processData('stripHTML')">❌ Strip HTML Tags</button>
+            </div>
+            
+            <button style="background-color: #ef4444; border: none; text-align: center; color: white;" onclick="clearAll()">Clear Fields</button>
+        </div>
+        
+        <!-- Right Panel -->
+        <div class="panel">
+            <div class="panel-title">
+                <span>Sanitized Output / Generated Items</span>
+                <span class="metrics" id="outputMetrics">Chars: 0</span>
+            </div>
+            <textarea id="outputText" placeholder="Processed text, step definition blocks, or synthetic mocks will appear here..." readonly></textarea>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">Copied to Clipboard!</div>
+
+    <script>
+        // Core Logic Drivers
+        const processors = {
+            beautifyJSON: (str) => { try { return JSON.stringify(JSON.parse(str), null, 4); } catch (e) { return `Error Parsing JSON: ${e.message}`; } },
+            minifyJSON: (str) => { try { return JSON.stringify(JSON.parse(str)); } catch (e) { return `Error Parsing JSON: ${e.message}`; } },
+            trimSpaces: (str) => str.trim().replace(/[ \t]+/g, ' '),
+            toCamelCase: (str) => str.toLowerCase().replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase()).replace(/[^a-zA-Z0-9]/g, ''),
+            toSnakeCase: (str) => str.replace(/\s+/g, '_').replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase().replace(/[^a-zA-Z0-9_]/g, ''),
+            toKebabCase: (str) => str.replace(/\s+/g, '-').replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase().replace(/[^a-zA-Z0-9-]/g, ''),
+            urlEncode: (str) => encodeURIComponent(str),
+            urlDecode: (str) => { try { return decodeURIComponent(str); } catch(e) { return `Error Decoding: ${e.message}`; } },
+            base64Encode: (str) => { try { return btoa(unescape(encodeURIComponent(str))); } catch(e) { return `Error Encoding: ${e.message}`; } },
+            base64Decode: (str) => { try { return decodeURIComponent(escape(atob(str))); } catch(e) { return `Error Decoding: ${e.message}`; } },
+            escapeHTML: (str) => str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)),
+            stripHTML: (str) => str.replace(/<\/?[^>]+(>|$)/g, "")
+        };
+
+        // HTTP Database
+        const httpDb = {
+            "200": "OK: Success request. Verify UI components match payload values.",
+            "201": "Created: Resource generated. Ensure subsequent GET routes read new ID assets safely.",
+            "400": "Bad Request: Server failed to interpret inputs. Check syntax configurations or parameters.",
+            "401": "Unauthorized: Access token missing/expired. Test redirection to authentication screens.",
+            "403": "Forbidden: Valid identity, insufficient access hierarchy. Verify security roles boundary restrictions.",
+            "404": "Not Found: Endpoint unreachable. Confirm path routing syntax or asset deletion workflows.",
+            "422": "Unprocessable Entity: Validation rules breach. Inspect payload formatting schemas.",
+            "500": "Internal Error: System breakdown. Extract stack trace leaks to verify safety vulnerabilities.",
+            "502": "Bad Gateway: Upstream failure network side. Check connection timeouts or load balancers status."
+        };
+
+        // Theme Switcher Execution
+        function changeTheme() {
+            const selectedTheme = document.getElementById('themeSelect').value;
+            document.documentElement.setAttribute('data-theme', selectedTheme);
+        }
+
+        // Regex Tester
+        function testRegex() {
+            const pattern = document.getElementById('regexInput').value;
+            const text = document.getElementById('inputText').value;
+            const regexInput = document.getElementById('regexInput');
+
+            if (!pattern) { regexInput.className = ''; return; }
+            try {
+                const regex = new RegExp(pattern);
+                regexInput.className = regex.test(text) ? 'regex-matched' : 'regex-error';
+            } catch (e) { regexInput.className = 'regex-error'; }
+        }
+
+        // BDD Scenario Parser
+        function generateBDDSteps() {
+            const input = document.getElementById('inputText').value;
+            if (!input.trim()) return;
+
+            const lines = input.split('\n');
+            let outputSteps = [];
+            let currentKeyword = 'Given';
+
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                const match = trimmed.match(/^(Given|When|Then|And|But)\s+(.*)$/i);
+                
+                if (match) {
+                    let keyword = match[1];
+                    let stepText = match[2];
+
+                    if (keyword.toLowerCase() === 'and' || keyword.toLowerCase() === 'but') {
+                        keyword = currentKeyword;
+                    } else {
+                        currentKeyword = keyword;
+                    }
+
+                    let argCount = 0;
+                    let paramNames = [];
+                    
+                    let regexStep = stepText
+                        .replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, () => {
+                            argCount++;
+                            paramNames.push(`param${argCount}`);
+                            return '"{string}"';
+                        })
+                        .replace(/\b\d+.\d+|\b\d+\b/g, () => {
+                            argCount++;
+                            paramNames.push(`num${argCount}`);
+                            return '{int}';
+                        });
+
+                    const argsString = paramNames.join(', ');
+                    outputSteps.push(`${keyword}('${regexStep}', (${argsString}) => {\n    // TODO: implement step logic\n});\n`);
+                }
+            });
+
+            const finalOutput = outputSteps.length > 0 ? outputSteps.join('\n') : "// No explicit Gherkin scenarios detected.";
+            const outputField = document.getElementById('outputText');
+            outputField.value = finalOutput;
+            document.getElementById('outputMetrics').innerText = `Chars: ${finalOutput.length}`;
+        }
+
+        // Mock Generator Data Arrays
+        function generateFakeData(type) {
+            const names = ["John Doe", "Jane Smith", "Alex Mercer", "Emily Watson", "Carlos Santana"];
+            const domains = ["example.com", "testsuite.org", "qa.net", "staging-env.io"];
+            let result = "";
+
+            if (type === 'name') {
+                result = names[Math.floor(Math.random() * names.length)];
+            } else if (type === 'email') {
+                const name = names[Math.floor(Math.random() * names.length)].toLowerCase().replace(' ', '.');
+                const dom = domains[Math.floor(Math.random() * domains.length)];
+                result = `${name}${Math.floor(Math.random() * 100)}@${dom}`;
+            } else if (type === 'uuid') {
+                result = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            } else if (type === 'phone') {
+                result = `+1-555-${Math.floor(100 + Math.random() * 900)}-${Math.floor(1000 + Math.random() * 9000)}`;
+            }
+
+            const outputField = document.getElementById('outputText');
+            outputField.value = result;
+            document.getElementById('outputMetrics').innerText = `Chars: ${result.length}`;
+        }
+
+        // HTTP Lookup Utility
+        function lookupHttpCode() {
+            const val = document.getElementById('httpLookup').value;
+            const infoBox = document.getElementById('httpInfo');
+            if(!val) {
+                infoBox.innerText = "Select a code to view testing implications.";
+                return;
+            }
+            infoBox.innerText = httpDb[val] || "Code information load error.";
+        }
+
+        function processData(action) {
+            const input = document.getElementById('inputText').value;
+            if(!input.trim() && action !== 'trimSpaces') return;
+            
+            const result = processors[action](input);
+            const outputField = document.getElementById('outputText');
+            outputField.value = result;
+            document.getElementById('outputMetrics').innerText = `Chars: ${result.length}`;
+        }
+
+        function updateMetrics() {
+            const input = document.getElementById('inputText').value;
+            const lines = input.length > 0 ? input.split('\n').length : 1;
+            document.getElementById('inputMetrics').innerText = `Chars: ${input.length} | Lines: ${lines}`;
+        }
+
+        function copyOutput() {
+            const outputText = document.getElementById('outputText').value;
+            if(!outputText) return;
+            navigator.clipboard.writeText(outputText).then(() => {
+                const toast = document.getElementById('toast');
+                toast.style.opacity = '1';
+                setTimeout(() => toast.style.opacity = '0', 2000);
+            });
+        }
+
+        function clearAll() {
+            document.getElementById('inputText').value = '';
+            document.getElementById('outputText').value = '';
+            document.getElementById('regexInput').value = '';
+            document.getElementById('regexInput').className = '';
+            document.getElementById('httpLookup').value = '';
+            document.getElementById('httpInfo').innerText = "Select a code to view testing implications.";
+            updateMetrics();
+            document.getElementById('outputMetrics').innerText = 'Chars: 0';
+        }
+    </script>
+</body>
+</html>
