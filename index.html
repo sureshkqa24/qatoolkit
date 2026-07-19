@@ -248,6 +248,8 @@
                     <button onclick="generateFakeData('email')" style="margin:0; font-size:0.75rem;">📧 Email</button>
                     <button onclick="generateFakeData('uuid')" style="margin:0; font-size:0.75rem;">🆔 UUID v4</button>
                     <button onclick="generateFakeData('phone')" style="margin:0; font-size:0.75rem;">📞 Phone</button>
+                    <button onclick="generateFakeData('debitcard')" style="margin:0; font-size:0.75rem;">💳 Debit Card</button>
+                    <button onclick="generateFakeData('creditcard')" style="margin:0; font-size:0.75rem;">💰 Credit Card</button>
                 </div>
             </div>
 
@@ -308,7 +310,15 @@
             urlEncode: (str) => encodeURIComponent(str),
             urlDecode: (str) => { try { return decodeURIComponent(str); } catch(e) { return `Error Decoding: ${e.message}`; } },
             base64Encode: (str) => { try { return btoa(unescape(encodeURIComponent(str))); } catch(e) { return `Error Encoding: ${e.message}`; } },
-            base64Decode: (str) => { try { return decodeURIComponent(escape(atob(str))); } catch(e) { return `Error Decoding: ${e.message}`; } },
+            base64Decode: (str) => { 
+                try { 
+                    // Remove whitespace and handle URL-safe base64
+                    const cleaned = str.trim().replace(/\s/g, '').replace(/-/g, '+').replace(/_/g, '/');
+                    // Pad if necessary
+                    const padded = cleaned + '='.repeat((4 - cleaned.length % 4) % 4);
+                    return decodeURIComponent(atob(padded).split('').map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+                } catch(e) { return `Error Decoding: ${e.message}`; } 
+            },
             escapeHTML: (str) => str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)),
             stripHTML: (str) => str.replace(/<\/?[^>]+(>|$)/g, "")
         };
@@ -394,6 +404,22 @@
             document.getElementById('outputMetrics').innerText = `Chars: ${finalOutput.length}`;
         }
 
+        // Luhn Algorithm for card validation
+        function generateLuhnChecksum(digits) {
+            let sum = 0;
+            let isEven = false;
+            for (let i = digits.length - 1; i >= 0; i--) {
+                let digit = parseInt(digits[i], 10);
+                if (isEven) {
+                    digit *= 2;
+                    if (digit > 9) digit -= 9;
+                }
+                sum += digit;
+                isEven = !isEven;
+            }
+            return (10 - (sum % 10)) % 10;
+        }
+
         // Mock Generator Data Arrays
         function generateFakeData(type) {
             const names = ["John Doe", "Jane Smith", "Alex Mercer", "Emily Watson", "Carlos Santana"];
@@ -413,6 +439,20 @@
                 });
             } else if (type === 'phone') {
                 result = `+1-555-${Math.floor(100 + Math.random() * 900)}-${Math.floor(1000 + Math.random() * 9000)}`;
+            } else if (type === 'debitcard') {
+                // Visa Debit Card format (16 digits starting with 4)
+                let cardNumber = '4' + Math.floor(Math.random() * 1000000000000000).toString().padStart(15, '0');
+                const checksum = generateLuhnChecksum(cardNumber);
+                result = cardNumber + checksum;
+                // Format: 4XXX XXXX XXXX XXXX
+                result = result.replace(/(\d{4})/g, '$1 ').trim();
+            } else if (type === 'creditcard') {
+                // Mastercard format (16 digits starting with 5)
+                let cardNumber = '5' + Math.floor(Math.random() * 1000000000000000).toString().padStart(15, '0');
+                const checksum = generateLuhnChecksum(cardNumber);
+                result = cardNumber + checksum;
+                // Format: 5XXX XXXX XXXX XXXX
+                result = result.replace(/(\d{4})/g, '$1 ').trim();
             }
 
             const outputField = document.getElementById('outputText');
